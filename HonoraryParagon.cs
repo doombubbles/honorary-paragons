@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using BTD_Mod_Helper;
+using BTD_Mod_Helper.Api;
 using BTD_Mod_Helper.Api.Display;
 using BTD_Mod_Helper.Api.Enums;
 using BTD_Mod_Helper.Extensions;
@@ -10,6 +11,7 @@ using Il2CppAssets.Scripts.Models;
 using Il2CppAssets.Scripts.Models.Effects;
 using Il2CppAssets.Scripts.Models.Towers;
 using Il2CppAssets.Scripts.Models.Towers.Behaviors;
+using Il2CppAssets.Scripts.Models.Towers.Filters;
 using Il2CppAssets.Scripts.Models.Towers.Projectiles;
 using Il2CppAssets.Scripts.Models.Towers.Projectiles.Behaviors;
 using Il2CppAssets.Scripts.Models.Towers.Upgrades;
@@ -43,6 +45,12 @@ public class HonoraryParagon : ModBuffInShop
 
     public override bool CanApplyTo(Tower tower, ref string helperMessage)
     {
+        if (tower.towerModel.IsHero() && tower.towerModel.tier < 20)
+        {
+            helperMessage = "Hero must be max level";
+            return false;
+        }
+
         if (tower.towerModel.tier < 3)
         {
             helperMessage = "Tower must be at least tier 3";
@@ -50,6 +58,12 @@ public class HonoraryParagon : ModBuffInShop
         }
 
         return base.CanApplyTo(tower, ref helperMessage);
+    }
+
+    public override void Register()
+    {
+        base.Register();
+        Cache[Name] = this;
     }
 
     public override BehaviorMutator GetMutator(Tower? tower) => new RateSupportModel.RateSupportMutator(true, Name, 0,
@@ -150,6 +164,8 @@ public class HonoraryParagon : ModBuffInShop
 
         var tower = gameModel.GetTowerWithName(towerId);
 
+        var honoraryParagonCost = gameModel.GetTowerWithName(TowerID<HonoraryParagon>()).cost;
+
         if (tower.IsHero())
         {
             var upgrades = gameModel
@@ -159,7 +175,8 @@ public class HonoraryParagon : ModBuffInShop
                 .ToArray();
 
             return new UpgradeModel(tower.baseId,
-                (int) (HonoraryParagonsMod.InternalCostFactor * upgrades.Sum(model => model.xpCost) / 2), 0,
+                (int) (honoraryParagonCost +
+                       HonoraryParagonsMod.InternalCostFactor * upgrades.Sum(model => model.xpCost) / 2), 0,
                 tower.icon, 0, 0, 0, "", "");
         }
         else
@@ -168,7 +185,8 @@ public class HonoraryParagon : ModBuffInShop
 
             var result = upgrades.MaxBy(upgrade => upgrade.tier)!.Duplicate();
             result.cost = (int) (HonoraryParagonsMod.InternalCostFactor *
-                                 upgrades.Aggregate(tower.cost, (cost, model) => cost + model.cost));
+                                 upgrades.Aggregate(tower.cost + honoraryParagonCost,
+                                     (cost, model) => cost + model.cost));
 
             return result;
         }
@@ -215,6 +233,11 @@ public class HonoraryParagon : ModBuffInShop
             {
                 eliteBoss.damageMultiplier -= 1 / normalBoss.damageMultiplier;
             }
+        });
+
+        towerModel.GetDescendants<FilterInvisibleModel>().ForEach(invis =>
+        {
+            invis.isActive = false;
         });
     }
 }
