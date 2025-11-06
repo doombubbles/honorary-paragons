@@ -1,4 +1,1 @@
-- Fixed an issue that could prevent the Honorary Paragon buff from saving on a tower
-- Changed the default value of the Internal Cost Factor setting to 1 instead of 2
-  - This makes investing money into Honorary Paragons more efficient
-- Due to some bugs, Heroes can now only be made into Honorary Paragons once they are max level
+- Updated to work with Tactical Tweaks Buffable Paragons setting

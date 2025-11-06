@@ -4,6 +4,7 @@ using BTD_Mod_Helper;
 using BTD_Mod_Helper.Api;
 using BTD_Mod_Helper.Api.Display;
 using BTD_Mod_Helper.Api.Enums;
+using BTD_Mod_Helper.Api.ModOptions;
 using BTD_Mod_Helper.Extensions;
 using BuffsInShop;
 using Il2Cpp;
@@ -57,6 +58,12 @@ public class HonoraryParagon : ModBuffInShop
             return false;
         }
 
+        if (tower.towerModel.isParagon)
+        {
+            helperMessage = "Already a paragon";
+            return false;
+        }
+
         return base.CanApplyTo(tower, ref helperMessage);
     }
 
@@ -69,27 +76,32 @@ public class HonoraryParagon : ModBuffInShop
     public override BehaviorMutator GetMutator(Tower? tower) => new RateSupportModel.RateSupportMutator(true, Name, 0,
         1000, GetInstance<HonoraryParagonIcon>().CreateBuffIndicatorModel());
 
-    public override void Apply(Tower tower, float purchaseCost = -1)
+    public override void Apply(Tower tower, float purchaseCost = -1, bool sideEffects = false)
     {
-        base.Apply(tower, purchaseCost);
+        base.Apply(tower, purchaseCost, sideEffects);
 
-        var exclude = new List<string>();
-
-        if (ModHelper.HasMod("PathsPlusPlus", out var pathsPlusPlus))
+        if (!(ModHelper.HasMod("TacticalTweaks", out var tacticalTweaks) &&
+              tacticalTweaks.ModSettings.TryGetValue("BuffableParagons", out var buffableParagons) &&
+              buffableParagons is ModSettingBool modSettingBool && modSettingBool))
         {
-            exclude.AddRange((IEnumerable<string>) pathsPlusPlus.Call("GetPathIds"));
-        }
+            var exclude = new List<string>();
 
-        foreach (var mutator in tower.mutators.ToArray().Reverse())
-        {
-            if (mutator.mutator.id == Name || exclude.Contains(mutator.mutator.id))
+            if (ModHelper.HasMod("PathsPlusPlus", out var pathsPlusPlus))
             {
-                mutator.isParagonMutator = true;
+                exclude.AddRange((IEnumerable<string>) pathsPlusPlus.Call("GetPathIds"));
             }
 
-            if (!mutator.isParagonMutator && !mutator.mutator.isArtifactMutator)
+            foreach (var mutator in tower.mutators.ToArray().Reverse())
             {
-                tower.RemoveMutatorIncludeSubTowers(mutator.mutator);
+                if (mutator.mutator.id == Name || exclude.Contains(mutator.mutator.id))
+                {
+                    mutator.isParagonMutator = true;
+                }
+
+                if (!mutator.isParagonMutator && !mutator.mutator.isArtifactMutator)
+                {
+                    tower.RemoveMutatorIncludeSubTowers(mutator.mutator);
+                }
             }
         }
 
