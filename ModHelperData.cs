@@ -2,8 +2,8 @@ namespace HonoraryParagons;
 
 public static class ModHelperData
 {
-    public const string WorksOnVersion = "51.0";
-    public const string Version = "1.0.2";
+    public const string WorksOnVersion = "54.3";
+    public const string Version = "1.0.3";
     public const string Name = "Honorary Paragons";
 
     public const string Description =

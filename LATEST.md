@@ -1,1 +1,2 @@
-- Updated to work with Tactical Tweaks Buffable Paragons setting
+- Updated internals to use the new `ModMutator` class from Mod Helper 3.6.0
+- Fixed some interactions with Honorary Paragons and Paths++

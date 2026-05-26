@@ -4,7 +4,9 @@ using BTD_Mod_Helper.Api;
 using BTD_Mod_Helper.Api.ModOptions;
 using BTD_Mod_Helper.Extensions;
 using HonoraryParagons;
+using Il2CppAssets.Scripts.Models;
 using Il2CppAssets.Scripts.Models.Profile;
+using Il2CppAssets.Scripts.Models.Towers;
 using Il2CppAssets.Scripts.Simulation.Towers;
 using Il2CppAssets.Scripts.Simulation.Towers.Behaviors;
 using Newtonsoft.Json;
@@ -51,4 +53,15 @@ public class HonoraryParagonsMod : BloonsTD6Mod
             }
         }
     }
+
+    public override object Call(string operation, params object[] parameters) => operation switch
+    {
+        "GetParagonUpgradeId" when parameters.CheckTypes(out TowerModel towerModel) =>
+            HonoraryParagon.GetParagonUpgradeId(towerModel),
+        "GetParagonUpgrade" when parameters.CheckTypes(out GameModel gameModel, out string id) =>
+            HonoraryParagon.GetParagonUpgrade(gameModel, id),
+        "GetParagonUpgrade" when parameters.CheckTypes(out GameModel gameModel, out TowerModel towerModel) =>
+            HonoraryParagon.GetParagonUpgrade(gameModel, HonoraryParagon.GetParagonUpgradeId(towerModel)),
+        _ => base.Call(operation, parameters)
+    };
 }

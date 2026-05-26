@@ -3,10 +3,16 @@ using HarmonyLib;
 using Il2CppAssets.Scripts.Models;
 using Il2CppAssets.Scripts.Models.Towers;
 using Il2CppAssets.Scripts.Models.Towers.Behaviors;
+using Il2CppAssets.Scripts.Models.Towers.Projectiles.Behaviors;
 using Il2CppAssets.Scripts.Models.Towers.Upgrades;
+using Il2CppAssets.Scripts.Models.Towers.Weapons.Behaviors;
+using Il2CppAssets.Scripts.Simulation.SMath;
 
 namespace HonoraryParagons;
 
+/// <summary>
+/// Return a custom upgrade for visuals and to modify the paragon cost scaling
+/// </summary>
 [HarmonyPatch(typeof(GameModel), nameof(GameModel.GetUpgrade))]
 internal static class GameModel_GetUpgrade
 {
@@ -20,18 +26,32 @@ internal static class GameModel_GetUpgrade
     }
 }
 
-[HarmonyPatch(typeof(RateSupportModel.RateSupportMutator), nameof(RateSupportModel.RateSupportMutator.Mutate))]
-internal static class RateSupportMutator_Mutate
+
+[HarmonyPatch(typeof(ParagonTowerModel.PowerDegreeMutator), nameof(ParagonTowerModel.PowerDegreeMutator.MutateTower))]
+internal static class PowerDegreeMutator_MutateTower
 {
-    [HarmonyPrefix]
-    internal static bool Prefix(RateSupportModel.RateSupportMutator __instance, Model model, ref bool __result)
+    [HarmonyPostfix]
+    internal static void Postfix(ParagonTowerModel.PowerDegreeMutator __instance, TowerModel tower)
     {
-        if (__instance.id != nameof(HonoraryParagon) || !model.Is(out TowerModel towerModel)) return true;
+        tower.GetDescendants<CashModel>().ForEach(cash =>
+        {
+            cash.bonusMultiplier += __instance.percentDamageUp / 100f;
+        });
 
-        HonoraryParagon.Paragonify(towerModel);
+        tower.GetDescendants<EmissionsPerRoundFilterModel>().ForEach(filter =>
+        {
+            filter.count += Math.CeilToInt(filter.count * __instance.attackCooldownReductionPercent / 100f);
+        });
 
-        __result = true;
+        tower.GetDescendants<PerRoundCashBonusTowerModel>().ForEach(bonus =>
+        {
+            bonus.cashRoundBonusMultiplier += __instance.percentDamageUp / 100f;
+        });
 
-        return false;
+        tower.GetDescendants<BankModel>().ForEach(bank =>
+        {
+            bank.interest *= 1 + __instance.attackCooldownReductionPercent / 100f;
+            bank.capacity += Math.RoundToNearestInt(bank.capacity * __instance.percentPierceUp / 100f, 500);
+        });
     }
 }

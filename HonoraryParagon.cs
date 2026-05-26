@@ -1,12 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using BTD_Mod_Helper;
-using BTD_Mod_Helper.Api;
-using BTD_Mod_Helper.Api.Display;
-using BTD_Mod_Helper.Api.Enums;
 using BTD_Mod_Helper.Api.ModOptions;
 using BTD_Mod_Helper.Extensions;
 using BuffsInShop;
+using HarmonyLib;
 using Il2Cpp;
 using Il2CppAssets.Scripts.Models;
 using Il2CppAssets.Scripts.Models.Effects;
@@ -67,14 +65,7 @@ public class HonoraryParagon : ModBuffInShop
         return base.CanApplyTo(tower, ref helperMessage);
     }
 
-    public override void Register()
-    {
-        base.Register();
-        Cache[Name] = this;
-    }
-
-    public override BehaviorMutator GetMutator(Tower? tower) => new RateSupportModel.RateSupportMutator(true, Name, 0,
-        1000, GetInstance<HonoraryParagonIcon>().CreateBuffIndicatorModel());
+    public override BehaviorMutator GetMutator(Tower? tower) => GetInstance<HonoraryParagonMutator>().Create();
 
     public override void Apply(Tower tower, float purchaseCost = -1, bool sideEffects = false)
     {
@@ -93,7 +84,7 @@ public class HonoraryParagon : ModBuffInShop
 
             foreach (var mutator in tower.mutators.ToArray().Reverse())
             {
-                if (mutator.mutator.id == Name || exclude.Contains(mutator.mutator.id))
+                if (mutator.mutator.id.Contains(Name) || exclude.Contains(mutator.mutator.id))
                 {
                     mutator.isParagonMutator = true;
                 }
@@ -172,20 +163,17 @@ public class HonoraryParagon : ModBuffInShop
 
     public static UpgradeModel GetParagonUpgrade(GameModel gameModel, string id)
     {
-        var towerId = id.Split("_").Last();
-
+        var towerId = id.Split("_").Skip(1).First();
         var tower = gameModel.GetTowerWithName(towerId);
+
+
+        var appliedUpgrades = id.Split("_").Last().Split(",");
+        var upgrades = appliedUpgrades.Select(gameModel.GetUpgrade).ToArray();
 
         var honoraryParagonCost = gameModel.GetTowerWithName(TowerID<HonoraryParagon>()).cost;
 
         if (tower.IsHero())
         {
-            var upgrades = gameModel
-                .GetHeroWithNameAndLevel(tower.baseId, 20)
-                .appliedUpgrades
-                .Select(gameModel.GetUpgrade)
-                .ToArray();
-
             return new UpgradeModel(tower.baseId,
                 (int) (honoraryParagonCost +
                        HonoraryParagonsMod.InternalCostFactor * upgrades.Sum(model => model.xpCost) / 2), 0,
@@ -193,8 +181,6 @@ public class HonoraryParagon : ModBuffInShop
         }
         else
         {
-            var upgrades = tower.appliedUpgrades.Select(gameModel.GetUpgrade).ToArray();
-
             var result = upgrades.MaxBy(upgrade => upgrade.tier)!.Duplicate();
             result.cost = (int) (HonoraryParagonsMod.InternalCostFactor *
                                  upgrades.Aggregate(tower.cost + honoraryParagonCost,
@@ -203,6 +189,9 @@ public class HonoraryParagon : ModBuffInShop
             return result;
         }
     }
+
+    public static string GetParagonUpgradeId(TowerModel towerModel) =>
+        nameof(HonoraryParagon) + "_" + towerModel.name + "_" + towerModel.appliedUpgrades.Join(delimiter: ",");
 
     public static void Paragonify(TowerModel towerModel)
     {
@@ -221,9 +210,9 @@ public class HonoraryParagon : ModBuffInShop
 
         towerModel.AddBehavior(paragonTower);
 
-        var paragonUpgrade = nameof(HonoraryParagon) + "_" + towerModel.name;
-
         var upgrades = towerModel.appliedUpgrades.ToList();
+
+        var paragonUpgrade = GetParagonUpgradeId(towerModel);
 
         while (upgrades.Count < 6)
         {
@@ -252,9 +241,4 @@ public class HonoraryParagon : ModBuffInShop
             invis.isActive = false;
         });
     }
-}
-
-public class HonoraryParagonIcon : ModBuffIcon
-{
-    public override string Icon => VanillaSprites.ParagonPip;
 }
